@@ -15,4 +15,41 @@
 -->
 
 <configuration>
+<property>
+  <name>yarn.resourcemanager.scheduler.class</name>
+  <value>org.apache.hadoop.yarn.server.resourcemanager.scheduler.fair.FairScheduler</value>
+</property>
+
+<property>
+  <name>yarn.scheduler.fair.allocation.file</name>
+  <value>fair-scheduler.xml</value>
+</property>
+
+<property>
+    <name>yarn.scheduler.fair.allow-undeclared-pools</name>
+    <value>true</value>
+  </property>
+  
+  
+  <property>
+    <name>yarn.scheduler.fair.preemption</name>
+    <value>true</value>
+  </property>
+  
+  <property>
+    <name>yarn.scheduler.fair.preemption.cluster-utilization-threshold</name>
+    <value>0.8</value>
+  </property>
+  
+   <property>
+    <name>yarn.scheduler.fair.resource-calculator</name>
+    <value>org.apache.hadoop.yarn.util.resource.DominantResourceCalculator</value>
+    <description>
+      The ResourceCalculator implementation to be used to compare 
+      Resources in the scheduler.
+      The default i.e. DefaultResourceCalculator only uses Memory while
+      DominantResourceCalculator uses dominant-resource to compare 
+      multi-dimensional resources such as Memory, CPU etc.
+    </description>
+  </property>
 </configuration>

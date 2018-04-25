@@ -33,8 +33,8 @@
 			<attribute name="maven.pomderived" value="true"/>
 		</attributes>
 	</classpathentry>
-	<classpathentry kind="lib" path="C:/Users/Mahsa/.m2/repository/org/apache/hadoop/hadoop-yarn-server-resourcemanager/3.0.1/hadoop-yarn-server-resourcemanager-3.0.1.jar"/>
-	<classpathentry kind="lib" path="C:/Users/Mahsa/.m2/repository/org/apache/hadoop/hadoop-yarn-server-resourcemanager/3.0.0/hadoop-yarn-server-resourcemanager-3.0.0.jar"/>
-	<classpathentry kind="lib" path="C:/Users/Mahsa/.m2/repository/org/apache/hadoop/hadoop-yarn-server-resourcemanager/2.8.1/hadoop-yarn-server-resourcemanager-2.8.1.jar"/>
+	<classpathentry kind="lib" path="/opt/hadoop/share/hadoop/yarn/hadoop-yarn-server-resourcemanager-3.0.1.jar"/>
+	<classpathentry kind="lib" path="/opt/hadoop/share/hadoop/yarn/hadoop-yarn-common-3.0.1.jar"/>
+	<classpathentry kind="lib" path="/opt/hadoop/share/hadoop/yarn/hadoop-yarn-server-resourcemanager-2.8.0.jar"/>
 	<classpathentry kind="output" path="target/classes"/>
 </classpath>

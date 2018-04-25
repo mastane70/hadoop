@@ -17,6 +17,10 @@
   limitations under the License.
 -->
 <allocations>
-  <queue name="queue1"></queue>
+    <queue name="default">
+        <weight>1.0</weight>
+        <schedulingPolicy>drf</schedulingPolicy>
+        <aclSubmitApps> </aclSubmitApps>
+        <aclAdministerApps>*</aclAdministerApps>
+        </queue>
 </allocations>
-
