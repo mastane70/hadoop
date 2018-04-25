@@ -419,12 +419,12 @@ public class ResourceManager extends CompositeService implements Recoverable {
 
   protected ResourceScheduler createScheduler() {
     String schedulerClassName = 
-   // 		conf.get(YarnConfiguration.RM_SCHEDULER,
-   //     YarnConfiguration.DEFAULT_RM_SCHEDULER);
+  		conf.get(YarnConfiguration.RM_SCHEDULER,
+        YarnConfiguration.DEFAULT_RM_SCHEDULER);
     		
     		//*************************ezafe*****************************
     		  //  "org.apache.hadoop.yarn.server.resourcemanager.scheduler.fifo.FifoScheduler";
-    		    "org.apache.hadoop.yarn.server.resourcemanager.scheduler.fair.FairScheduler";
+    		  //  "org.apache.hadoop.yarn.server.resourcemanager.scheduler.fair.FairScheduler";
     		   //********************************************************************  		
     		
     		

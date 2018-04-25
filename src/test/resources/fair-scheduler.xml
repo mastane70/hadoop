@@ -19,7 +19,7 @@
 <allocations>
     <queue name="default">
         <weight>1.0</weight>
-        <schedulingPolicy>drf</schedulingPolicy>
+        <defaultQueueSchedulingPolicy>drf</defaultQueueSchedulingPolicy>
         <aclSubmitApps> </aclSubmitApps>
         <aclAdministerApps>*</aclAdministerApps>
         </queue>
