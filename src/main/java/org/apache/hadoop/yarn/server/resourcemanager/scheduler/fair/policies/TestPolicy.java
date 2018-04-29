@@ -26,7 +26,7 @@ public class TestPolicy extends SchedulingPolicy {
 		      new TestComparator2();
 	//private static final TestCalculator CALCULATOR =
 	//	      new TestCalculator();
-	
+	//
 	@Override
 	public ResourceCalculator getResourceCalculator() {
 		// TODO Auto-generated method stub
