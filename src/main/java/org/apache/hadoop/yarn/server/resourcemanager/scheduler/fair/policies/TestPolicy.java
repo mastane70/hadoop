@@ -136,10 +136,13 @@ public class TestPolicy extends SchedulingPolicy {
        double[] shares2 = new double[2];
        int fitness1 = calculateFitness(request1, s1.getWeight(), clusterCapacity);
        int fitness2 = calculateFitness(request2, s2.getWeight(), clusterCapacity);
-       boolean s1Needy =
-       boolean s2Needy = 
+       boolean s1Needy ;
+       boolean s2Needy ;
+       int res = 0;
+       return res;
+   }
  //***********************************************************************      
-     ResourceInformation[] resourceInfo1 =
+   /*  ResourceInformation[] resourceInfo1 =
          s1.getResourceUsage().getResources();
      ResourceInformation[] resourceInfo2 =
          s2.getResourceUsage().getResources();
@@ -198,7 +201,7 @@ public class TestPolicy extends SchedulingPolicy {
 
      return res;
    }
-
+*/
 
    @VisibleForTesting
    int calculateFitness(ResourceInformation[] request,
