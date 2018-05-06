@@ -24,9 +24,7 @@ public class TestPolicy extends SchedulingPolicy {
 	public static final String NAME = "TEST";
 	private static final TestComparator2 COMPARATOR =
 		      new TestComparator2();
-	//private static final TestCalculator CALCULATOR =
-	//	      new TestCalculator();
-	//
+	
 	@Override
 	public ResourceCalculator getResourceCalculator() {
 		// TODO Auto-generated method stub
@@ -132,76 +130,42 @@ public class TestPolicy extends SchedulingPolicy {
 		          s2.getResourceUsage().getResources();
 	   ResourceInformation[] clusterCapacity =
 		          fsContext.getClusterResource().getResources();
-       double[] shares1 = new double[2];
-       double[] shares2 = new double[2];
+	   ResourceInformation[] minShareInfo1 = s1.getMinShare().getResources();
+	   ResourceInformation[] minShareInfo2 = s2.getMinShare().getResources();
+	  
+       double[] ourFairness1 = calculateOurFairness(request1, s1.getWeight(), minShareInfo1, null);
+       double[] ourFairness2 = calculateOurFairness(request2, s2.getWeight(), minShareInfo2, null);
+       
+       double temperature=0 ;
+       
        int fitness1 = calculateFitness(request1, s1.getWeight(), clusterCapacity);
        int fitness2 = calculateFitness(request2, s2.getWeight(), clusterCapacity);
-       boolean s1Needy ;
-       boolean s2Needy ;
+       // queue is needy if req_mem < minshare_mem or req_vcore < minshare_vcore 
+       boolean s1Needy = (request1[Resource.MEMORY_INDEX].getValue() < minShareInfo1[Resource.MEMORY_INDEX].getValue()) 
+    		          || (request1[Resource.VCORES_INDEX].getValue() < minShareInfo1[Resource.VCORES_INDEX].getValue()) ;
+       
+       boolean s2Needy = (request2[Resource.MEMORY_INDEX].getValue() < minShareInfo2[Resource.MEMORY_INDEX].getValue()) 
+		          || (request2[Resource.VCORES_INDEX].getValue() < minShareInfo2[Resource.VCORES_INDEX].getValue()) ;
+       
+    	     
+       
        int res = 0;
+       
+       if (s1Needy && !s2Needy) {
+    	   res = -1 ; 
+    	  
+       }else if (!s1Needy && s2Needy) {
+    	   res = 1 ; 
+       }else if (s1Needy && s2Needy) {
+    	   
+     //  res = compareFitness(fitness1, fitness2) ;
+    	 res = compareSimulatedAnnealing(temperature) ;
+       }
+       
        return res;
    }
  //***********************************************************************      
-   /*  ResourceInformation[] resourceInfo1 =
-         s1.getResourceUsage().getResources();
-     ResourceInformation[] resourceInfo2 =
-         s2.getResourceUsage().getResources();
-     ResourceInformation[] minShareInfo1 = s1.getMinShare().getResources();
-     ResourceInformation[] minShareInfo2 = s2.getMinShare().getResources();
-     ResourceInformation[] clusterInfo =
-         fsContext.getClusterResource().getResources();
-     double[] shares1 = new double[2];
-     double[] shares2 = new double[2];
-
-     int dominant1 = calculateClusterAndFairRatios(resourceInfo1,
-         s1.getWeight(), clusterInfo, shares1);
-     int dominant2 = calculateClusterAndFairRatios(resourceInfo2,
-         s2.getWeight(), clusterInfo, shares2);
-
-     // A queue is needy for its min share if its dominant resource
-     // (with respect to the cluster capacity) is below its configured min
-     // share for that resource
-     boolean s1Needy = resourceInfo1[dominant1].getValue() <
-         minShareInfo1[dominant1].getValue();
-     boolean s2Needy = resourceInfo1[dominant2].getValue() <
-         minShareInfo2[dominant2].getValue();
-
-     int res;
-
-     if (!s2Needy && !s1Needy) {
-       res = (int) Math.signum(shares1[dominant1] - shares2[dominant2]);
-
-       if (res == 0) {
-         // Because memory and CPU are indices 0 and 1, we can find the
-         // non-dominant index by subtracting the dominant index from 1.
-         res = (int) Math.signum(shares1[1 - dominant1] -
-             shares2[1 - dominant2]);
-       }
-     } else if (s1Needy && !s2Needy) {
-       res = -1;
-     } else if (s2Needy && !s1Needy) {
-       res = 1;
-     } else {
-       double[] minShares1 =
-           calculateMinShareRatios(resourceInfo1, minShareInfo1);
-       double[] minShares2 =
-           calculateMinShareRatios(resourceInfo2, minShareInfo2);
-
-       res = (int) Math.signum(minShares1[dominant1] - minShares2[dominant2]);
-
-       if (res == 0) {
-         res = (int) Math.signum(minShares1[1 - dominant1] -
-             minShares2[1 - dominant2]);
-       }
-     }
-
-     if (res == 0) {
-       res = compareAttribrutes(s1, s2);
-     }
-
-     return res;
-   }
-*/
+  
 
    @VisibleForTesting
    int calculateFitness(ResourceInformation[] request,
@@ -216,6 +180,130 @@ public class TestPolicy extends SchedulingPolicy {
      return fitness;
    }
    
-	
+   //**********************************************************************
+   int compareFitness(float fitness1 , float fitness2) {
+	   int ret = 0;
+	   
+	   if (fitness1 > fitness2) {
+		   ret = 1;
+	   }else if (fitness1 < fitness2) {
+		   ret = -1 ;
+	   }
+	   
+	   return ret ;
+   }
+   
+ //**********************************************************************
+   int compareSimulatedAnnealing(double temperature ) {
+	   int ret = 0;
+	  
+	   
+	   return ret ;
+   }
+   
+	//***********************************************************************
+     double [] calculateOurFairness(ResourceInformation[] usage,
+	        float weight, ResourceInformation[] minshare, double[] shares) {
+	      float dominant;
+
+	      shares[Resource.MEMORY_INDEX] =
+	          ((double) usage[Resource.MEMORY_INDEX].getValue()) /
+	          minshare[Resource.MEMORY_INDEX].getValue() * weight;
+	      shares[Resource.VCORES_INDEX] =
+	          ((double) usage[Resource.VCORES_INDEX].getValue()) /
+	          minshare[Resource.VCORES_INDEX].getValue() * weight;
+	      
+
+	      return shares;
+   }
+   }
+
+	 static class TestResourceCalculator extends ResourceCalculator{
+		 public TestResourceCalculator() {
+		  }
+
+		@Override
+		public int compare(Resource clusterResource, Resource lhs, Resource rhs, boolean singleType) {
+			// TODO Auto-generated method stub
+			return 0;
+		}
+
+		@Override
+		public long computeAvailableContainers(Resource available, Resource required) {
+			// TODO Auto-generated method stub
+			return 0;
+		}
+
+		@Override
+		public Resource multiplyAndNormalizeUp(Resource r, double by, Resource stepFactor) {
+			// TODO Auto-generated method stub
+			return null;
+		}
+
+		@Override
+		public Resource multiplyAndNormalizeDown(Resource r, double by, Resource stepFactor) {
+			// TODO Auto-generated method stub
+			return null;
+		}
+
+		@Override
+		public Resource normalize(Resource r, Resource minimumResource, Resource maximumResource, Resource stepFactor) {
+			// TODO Auto-generated method stub
+			return null;
+		}
+
+		@Override
+		public Resource roundUp(Resource r, Resource stepFactor) {
+			// TODO Auto-generated method stub
+			return null;
+		}
+
+		@Override
+		public Resource roundDown(Resource r, Resource stepFactor) {
+			// TODO Auto-generated method stub
+			return null;
+		}
+
+		@Override
+		public float divide(Resource clusterResource, Resource numerator, Resource denominator) {
+			// TODO Auto-generated method stub
+			return 0;
+		}
+
+		@Override
+		public boolean isInvalidDivisor(Resource r) {
+			// TODO Auto-generated method stub
+			return false;
+		}
+
+		@Override
+		public float ratio(Resource a, Resource b) {
+			// TODO Auto-generated method stub
+			return 0;
+		}
+
+		@Override
+		public Resource divideAndCeil(Resource numerator, int denominator) {
+			// TODO Auto-generated method stub
+			return null;
+		}
+
+		@Override
+		public Resource divideAndCeil(Resource numerator, float denominator) {
+			// TODO Auto-generated method stub
+			return null;
+		}
+
+		@Override
+		public boolean fitsIn(Resource smaller, Resource bigger) {
+			// TODO Auto-generated method stub
+			return false;
+		}
+
+		@Override
+		public boolean isAnyMajorResourceZero(Resource resource) {
+			// TODO Auto-generated method stub
+			return false;
+		}
 	 }
 }
