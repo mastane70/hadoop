@@ -5,6 +5,7 @@ import java.util.Collection;
 import java.util.Comparator;
 
 import com.google.common.annotations.VisibleForTesting;
+
 import org.apache.hadoop.classification.InterfaceAudience.Private;
 import org.apache.hadoop.classification.InterfaceStability.Unstable;
 import org.apache.hadoop.yarn.api.records.Resource;
@@ -123,51 +124,130 @@ public class TestPolicy extends SchedulingPolicy {
      extends TestComparator {
    @Override
    public int compare(Schedulable s1, Schedulable s2) {
-	//**************************my code ********************************   
+	
 	   ResourceInformation[] request1 =
 		          s1.getResourceUsage().getResources();
 	   ResourceInformation[] request2 =
 		          s2.getResourceUsage().getResources();
 	   ResourceInformation[] clusterCapacity =
 		          fsContext.getClusterResource().getResources();
+	   
 	   ResourceInformation[] minShareInfo1 = s1.getMinShare().getResources();
 	   ResourceInformation[] minShareInfo2 = s2.getMinShare().getResources();
+	   
+	   // shares[] = request/clustercapacity*weight
+	   double[] shares1 = new double[2];
+	   double[] shares2 = new double[2];
+	   
 	  
+
+	   // dominant=0 => memory is dominant resource and dominant=1 => v_core is dominant resource
+	   int dominant1 = calculateClusterAndFairRatios(request1,
+		          s1.getWeight(), clusterCapacity, shares1);
+	   int dominant2 = calculateClusterAndFairRatios(request2,
+		          s2.getWeight(), clusterCapacity, shares2);
+	   
+	   boolean s1Needy = request1[dominant1].getValue() <
+		          minShareInfo1[dominant1].getValue();
+	   boolean s2Needy = request2[dominant2].getValue() <
+		          minShareInfo2[dominant2].getValue();
+	   
+	   // ourFairness[] = request/minshares*weight
        double[] ourFairness1 = calculateOurFairness(request1, s1.getWeight(), minShareInfo1, null);
        double[] ourFairness2 = calculateOurFairness(request2, s2.getWeight(), minShareInfo2, null);
+
+	   
+       double temperature= Math.abs(ourFairness1[dominant1] - ourFairness2[dominant2]) *100 ; 
        
-       double temperature=0 ;
-       
+       if (temperature==0){
+    	   temperature= Math.abs(ourFairness1[1-dominant1] - ourFairness2[1-dominant2]) * 100 ;
+    	   } 
        int fitness1 = calculateFitness(request1, s1.getWeight(), clusterCapacity);
        int fitness2 = calculateFitness(request2, s2.getWeight(), clusterCapacity);
-       // queue is needy if req_mem < minshare_mem or req_vcore < minshare_vcore 
-       boolean s1Needy = (request1[Resource.MEMORY_INDEX].getValue() < minShareInfo1[Resource.MEMORY_INDEX].getValue()) 
-    		          || (request1[Resource.VCORES_INDEX].getValue() < minShareInfo1[Resource.VCORES_INDEX].getValue()) ;
+       int res = 0; 
+       double rand= Math.random();
        
-       boolean s2Needy = (request2[Resource.MEMORY_INDEX].getValue() < minShareInfo2[Resource.MEMORY_INDEX].getValue()) 
-		          || (request2[Resource.VCORES_INDEX].getValue() < minShareInfo2[Resource.VCORES_INDEX].getValue()) ;
-       
-    	     
-       
-       int res = 0;
-       
-       if (s1Needy && !s2Needy) {
-    	   res = -1 ; 
-    	  
-       }else if (!s1Needy && s2Needy) {
-    	   res = 1 ; 
-       }else if (s1Needy && s2Needy) {
-    	   
-     //  res = compareFitness(fitness1, fitness2) ;
-    	 res = compareSimulatedAnnealing(temperature) ;
-       }
-       
-       return res;
-   }
- //***********************************************************************      
-  
 
+       if (!s2Needy && !s1Needy) {
+         res = (int) Math.signum(fitness1 - fitness2); 
+         	if(res==0) {
+         		res = compareAttribrutes(s1, s2);
+         	}
+
+       } else if (s1Needy && !s2Needy) {
+    	   
+         res = -1;
+         
+       } else if (s2Needy && !s1Needy) {
+    	   
+         res = 1;
+         
+       } else if (s2Needy && s1Needy) {
+    	   
+    	   if(fitness1 < fitness2){
+        	   res = 1;
+        	  
+           }else if (fitness1 > fitness2){
+        	   
+        	   double p= Math.exp((fitness2-fitness1)/temperature) ;
+        	   
+        		   res=  p > rand ?
+        				   1 : -1;
+        		  
+           }else if (fitness1==fitness2){
+        	   res = compareAttribrutes(s1, s2);
+        	   }
+           }
+     
+
+      
+     
+     
+       return res;   
+       
+       
+   }
+ 
+
+
+//***********************************************************************      
+   static int calculateClusterAndFairRatios(ResourceInformation[] resourceInfo,
+	        float weight, ResourceInformation[] clusterInfo, double[] shares) {
+	      int dominant;
+
+	      shares[Resource.MEMORY_INDEX] =
+	          ((double) resourceInfo[Resource.MEMORY_INDEX].getValue()) /
+	          clusterInfo[Resource.MEMORY_INDEX].getValue();
+	      shares[Resource.VCORES_INDEX] =
+	          ((double) resourceInfo[Resource.VCORES_INDEX].getValue()) /
+	          clusterInfo[Resource.VCORES_INDEX].getValue();
+	      dominant =
+	          shares[Resource.VCORES_INDEX] > shares[Resource.MEMORY_INDEX] ?
+	          Resource.VCORES_INDEX : Resource.MEMORY_INDEX;
+
+	      shares[Resource.MEMORY_INDEX] /= weight;
+	      shares[Resource.VCORES_INDEX] /= weight;
+
+	      return dominant;
+	    }
+    //************************************************************************
+   static double[] calculateMinShareRatios(ResourceInformation[] resourceInfo,
+	        ResourceInformation[] minShareInfo) {
+	      double[] minShares1 = new double[2];
+
+	      // both are needy below min share
+	      minShares1[Resource.MEMORY_INDEX] =
+	          ((double) resourceInfo[Resource.MEMORY_INDEX].getValue()) /
+	          minShareInfo[Resource.MEMORY_INDEX].getValue();
+	      minShares1[Resource.VCORES_INDEX] =
+	          ((double) resourceInfo[Resource.VCORES_INDEX].getValue()) /
+	          minShareInfo[Resource.VCORES_INDEX].getValue();
+
+	      return minShares1;
+	    }
+   //**************************************************************************
    @VisibleForTesting
+static
    int calculateFitness(ResourceInformation[] request,
        float weight, ResourceInformation[] clusterCapacity) {
      int fitness= ((int) request[Resource.MEMORY_INDEX].getValue()*
@@ -194,27 +274,21 @@ public class TestPolicy extends SchedulingPolicy {
    }
    
  //**********************************************************************
-   int compareSimulatedAnnealing(double temperature ) {
-	   int ret = 0;
-	  
-	   
-	   return ret ;
-   }
+   
    
 	//***********************************************************************
-     double [] calculateOurFairness(ResourceInformation[] usage,
-	        float weight, ResourceInformation[] minshare, double[] shares) {
-	      float dominant;
-
-	      shares[Resource.MEMORY_INDEX] =
-	          ((double) usage[Resource.MEMORY_INDEX].getValue()) /
-	          minshare[Resource.MEMORY_INDEX].getValue() * weight;
-	      shares[Resource.VCORES_INDEX] =
-	          ((double) usage[Resource.VCORES_INDEX].getValue()) /
-	          minshare[Resource.VCORES_INDEX].getValue() * weight;
+     static double [] calculateOurFairness(ResourceInformation[] usage,
+	        float weight, ResourceInformation[] minshare, double [] ourFairness) {
 	      
 
-	      return shares;
+	      ourFairness[Resource.MEMORY_INDEX] =
+	          ((double) usage[Resource.MEMORY_INDEX].getValue()) /
+	          minshare[Resource.MEMORY_INDEX].getValue() * weight;
+	      ourFairness[Resource.VCORES_INDEX] =
+		          ((double) usage[Resource.VCORES_INDEX].getValue()) /
+		          minshare[Resource.VCORES_INDEX].getValue() * weight;
+
+	      return ourFairness;
    }
    }
 
