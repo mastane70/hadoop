@@ -270,6 +270,12 @@
 <artifactId>jersey-test-framework-grizzly2</artifactId>
 <scope>test</scope>
 </dependency>
+	<dependency>
+		<groupId>com.kenai.nbpwr</groupId>
+		<artifactId>org-apache-commons-logging</artifactId>
+		<version>1.0.4-201003011305</version>
+		<type>nbm</type>
+	</dependency>
 </dependencies>
 <build>
 <testResources>

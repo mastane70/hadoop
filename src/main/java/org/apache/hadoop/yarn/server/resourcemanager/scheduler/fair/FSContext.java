@@ -62,4 +62,8 @@ public class FSContext {
   public Resource getClusterResource() {
     return scheduler.getClusterResource();
   }
+  public Resource getClusterUsage() {
+	    return scheduler.getRootQueueMetrics()
+	            .getAllocatedResources();
+	  }
 }

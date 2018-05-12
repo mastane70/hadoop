@@ -20,7 +20,10 @@
   <value>org.apache.hadoop.yarn.server.resourcemanager.scheduler.fair.FairScheduler</value>
 </property>
 
-
+<property>
+  <name>yarn.resource-types</name>
+  <value>memory, cpu</value>
+</property>
 <property>
   <name>yarn.scheduler.fair.allocation.file</name>
   <value>fair-scheduler.xml</value>
