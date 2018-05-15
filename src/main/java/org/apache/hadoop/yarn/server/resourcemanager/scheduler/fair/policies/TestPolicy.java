@@ -23,6 +23,8 @@ import org.apache.hadoop.yarn.util.resource.ResourceUtils;
 public class TestPolicy extends SchedulingPolicy {
    
 	public static final String NAME = "TEST";
+	private static final int NUM_RESOURCES =
+		      ResourceUtils.getNumberOfKnownResourceTypes();
 	private static final TestComparator2 COMPARATOR =
 		      new TestComparator2();
 	
@@ -141,18 +143,12 @@ public class TestPolicy extends SchedulingPolicy {
 			      fsContext.getClusterResource();
 	   Resource clusterAvailableResources =
 		        Resources.subtract(clusterCapacity, clusterUsage);
-
-	   
-	   
-	   
-	   
 	   
 	   // shares[] = request/clustercapacity*weight
 	   double[] shares1 = new double[2];
 	   double[] shares2 = new double[2];
 	   
 	   
-
 	   // dominant=0 => memory is dominant resource and dominant=1 => v_core is dominant resource
 	   int dominant1 = calculateClusterAndFairRatios(request1,
 		          s1.getWeight(), clusterCapacity.getResources(), shares1);
@@ -164,27 +160,31 @@ public class TestPolicy extends SchedulingPolicy {
 	   boolean s2Needy = uage2[dominant2].getValue() <
 		          minShareInfo2[dominant2].getValue();
 	   
-	   // ourFairness[] = request/minshares*weight
-       double[] ourFairness1 = calculateOurFairness(usage1, s1.getWeight(), minShareInfo1, null);
-       double[] ourFairness2 = calculateOurFairness(uage2, s2.getWeight(), minShareInfo2, null);
-
 	   
-       double temperature= Math.abs(ourFairness1[dominant1] - ourFairness2[dominant2]) *1000 ; 
-       double minTemperature = 10 ;
-       double Alpha= 0.9 ;
-       if (temperature==0){
-    	   temperature= Math.abs(ourFairness1[1-dominant1] - ourFairness2[1-dominant2]) * 100 ;
-    	   } 
+	   // These arrays hold the fairness for needy time and not needy time
+	   // ratios[0][x] are if not needy, ourFairness[] = request/cluster*weight 
+	   // ratios[1][x] are needy, ourFairness[] = request/minshares*weight
+	     
+       double[][] ourFairness1 =new double [2][NUM_RESOURCES];
+       double[][] ourFairness2 = new double [2][NUM_RESOURCES];
+       ourFairness1[0] = calculateOurFairness(usage1, s1.getWeight(), minShareInfo1);
+       ourFairness1[1] = calculateOurFairness(uage2, s2.getWeight(), minShareInfo2);
+       ourFairness2[0] = calculateOurFairness(usage1, s1.getWeight(), clusterCapacity.getResources());
+       ourFairness2[1] = calculateOurFairness(uage2, s2.getWeight(), clusterCapacity.getResources());
+       
+       
        int fitness1 = calculateFitness(
     		   request1, s1.getWeight(), clusterAvailableResources.getResources());
        int fitness2 = calculateFitness(
     		   request2, s2.getWeight(), clusterAvailableResources.getResources());
        int res = 0; 
-       double rand= Math.random();
+      
        
 
        if (!s2Needy && !s1Needy) {
-         res = (int) Math.signum(fitness2 - fitness1); 
+    	   double temperature= calculateTemperature(ourFairness1[0],ourFairness2[0],
+    			  dominant1, dominant2);
+         res = compareSA(temperature, fitness1, fitness2) ; 
          	if(res==0) {
          		res = compareAttribrutes(s1, s2);
          	}
@@ -198,30 +198,13 @@ public class TestPolicy extends SchedulingPolicy {
          res = 1;
          
        } else if (s2Needy && s1Needy) {
+    	   double temperature= calculateTemperature(ourFairness1[1],ourFairness2[1],
+     			  dominant1, dominant2);
     	   
-    	   res = -1; //initial state is S1
-    	   if( temperature > minTemperature ) {
-    		   
-    		   // simulated annealing starts
-        	   
-    	   if(fitness1 < fitness2){
-        	   res = 1; // moves to next state
-        	  
-           }else if (fitness1 > fitness2){
-        	   
-        	   double p= Math.exp((fitness2-fitness1)/temperature) ;
-        	   
-        		   res=  p > rand  ?
-        				   1 : -1;
-        		   temperature*= Alpha ;
-        	   
-           
-        		  
-           }else if (fitness1 == fitness2){
+    	   res = compareSA(temperature, fitness1, fitness2) ;
+    	   if (res == 0){
         	   res = compareAttribrutes(s1, s2);
-        	   }
-           }
-     
+    	   }
 
        }
      
@@ -300,21 +283,66 @@ static
    
  //**********************************************************************
    
-   
+   int compareSA(Double temperature , float fitness1, float fitness2) {
+	   int ret = 0;
+	   double minTemperature = 10 ;
+       double Alpha= 0.9 ;
+       double rand= Math.random();
+	   
+ {
+    	   
+    	   ret = -1; //initial state is S1
+    	   if( temperature > minTemperature ) {
+    		   
+    		   // simulated annealing starts
+        	   
+    	   if(fitness1 < fitness2){
+        	   ret = 1; // moves to next state
+        	  
+           }else if (fitness1 > fitness2){
+        	   
+        	   double p= Math.exp((fitness2-fitness1)/temperature) ;
+        	   
+        		   ret=  p > rand  ?
+        				   1 : -1;
+        		   temperature*= Alpha ;
+        	   
+           
+        		  
+           }else if (fitness1 == fitness2){
+        	   ret = 0;
+        	   }
+           }
+     
+
+       }
+	   return ret ;
+   }
 	//***********************************************************************
      static double [] calculateOurFairness(ResourceInformation[] usage,
-	        float weight, ResourceInformation[] minshare, double [] ourFairness) {
+	        float weight, ResourceInformation[] minshare) {
 	      
-
-	      ourFairness[Resource.MEMORY_INDEX] =
+	    double[] ourFairness = null;
+		ourFairness[Resource.MEMORY_INDEX] =
 	          ((double) usage[Resource.MEMORY_INDEX].getValue()) /
 	          minshare[Resource.MEMORY_INDEX].getValue() * weight;
-	      ourFairness[Resource.VCORES_INDEX] =
-		          ((double) usage[Resource.VCORES_INDEX].getValue()) /
-		          minshare[Resource.VCORES_INDEX].getValue() * weight;
+	    ourFairness[Resource.VCORES_INDEX] =
+		      ((double) usage[Resource.VCORES_INDEX].getValue()) /
+		      minshare[Resource.VCORES_INDEX].getValue() * weight;
 
-	      return ourFairness;
+	   return ourFairness;
    }
+   //*****************************************************************************
+     double calculateTemperature(double [] ourFairness1, double [] ourFairness2, 
+    		 int dominant1, int dominant2) {
+ 	      double Temperature = 
+ 	    		  Math.abs(ourFairness1[dominant1] - ourFairness2[dominant2]) *1000 ;
+ 	      if (Temperature == 0) {
+ 	    	 Temperature = 
+ 	 	    	  Math.abs(ourFairness1[1 - dominant1] - ourFairness2[1 - dominant2]) *1000 ;
+ 	      }
+ 	   return Temperature;
+    }
    }
 
 	 
