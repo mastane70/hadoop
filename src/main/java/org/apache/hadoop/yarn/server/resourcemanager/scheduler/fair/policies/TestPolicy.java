@@ -1,5 +1,6 @@
 package org.apache.hadoop.yarn.server.resourcemanager.scheduler.fair.policies;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Comparator;
@@ -27,6 +28,8 @@ public class TestPolicy extends SchedulingPolicy {
 		      ResourceUtils.getNumberOfKnownResourceTypes();
 	private static final TestComparator2 COMPARATOR =
 		      new TestComparator2();
+	private static final ArrayList<Schedulable>  schedulables = null ;
+	private static final ArrayList<Integer>  fitnessOfAll = null ; 
 	
 	@Override
 	public ResourceCalculator getResourceCalculator() {
@@ -125,8 +128,11 @@ public class TestPolicy extends SchedulingPolicy {
 	 static class TestComparator2
      extends TestComparator {
    @Override
+   
+   
    public int compare(Schedulable s1, Schedulable s2) {
-	
+	   
+	   
 	   ResourceInformation[] usage1 =
 		          s1.getResourceUsage().getResources();
 	   ResourceInformation[] uage2 =
@@ -208,7 +214,15 @@ public class TestPolicy extends SchedulingPolicy {
 
        }
      
-     
+     if (res == -1) {
+    	 AddTOArray(s1);
+  	   
+     }
+     if (res == 1) {
+    	 AddTOArray(s2);
+  	   
+     }
+       
        return res;   
        
        
@@ -217,7 +231,7 @@ public class TestPolicy extends SchedulingPolicy {
 
 
 //***********************************************************************      
-   static int calculateClusterAndFairRatios(ResourceInformation[] resourceInfo,
+    int calculateClusterAndFairRatios(ResourceInformation[] resourceInfo,
 	        float weight, ResourceInformation[] clusterInfo, double[] shares) {
 	      int dominant;
 
@@ -237,7 +251,7 @@ public class TestPolicy extends SchedulingPolicy {
 	      return dominant;
 	    }
     //************************************************************************
-   static double[] calculateMinShareRatios(ResourceInformation[] resourceInfo,
+    double[] calculateMinShareRatios(ResourceInformation[] resourceInfo,
 	        ResourceInformation[] minShareInfo) {
 	      double[] minShares1 = new double[2];
 
@@ -253,8 +267,8 @@ public class TestPolicy extends SchedulingPolicy {
 	    }
    //**************************************************************************
    @VisibleForTesting
-static
-   int calculateFitness(ResourceInformation[] request,
+
+  int calculateFitness(ResourceInformation[] request,
        float weight, ResourceInformation[] clusterAvailableResources) {
 	  
 	   
@@ -319,7 +333,7 @@ static
 	   return ret ;
    }
 	//***********************************************************************
-     static double [] calculateOurFairness(ResourceInformation[] usage,
+      double [] calculateOurFairness(ResourceInformation[] usage,
 	        float weight, ResourceInformation[] minshare) {
 	      
 	    double[] ourFairness = null;
@@ -343,7 +357,27 @@ static
  	      }
  	   return Temperature;
     }
-   }
+   
 
-	 
+//*********************************************************************************
+      void AddTOArray(Schedulable s) {
+ 		if (! schedulables.contains(s)) {
+ 			
+ 			schedulables.add(s);
+ 			Resource clusterCapacity =
+ 			          fsContext.getClusterResource();
+ 		   Resource clusterUsage = 
+ 				      fsContext.getClusterResource();
+ 		   Resource clusterAvailableResources =
+ 			        Resources.subtract(clusterCapacity, clusterUsage);
+ 		   
+ 			int fitness = calculateFitness(s.getDemand().getResources(),
+ 					s.getWeight(), clusterAvailableResources.getResources());
+ 			fitnessOfAll.add(fitness);
+ 		}
+ 		
+ 	
+ 	}
+//*********************************************************************************
+}	 
 }

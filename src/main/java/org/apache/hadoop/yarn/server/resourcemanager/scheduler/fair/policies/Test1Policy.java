@@ -1,4 +1,5 @@
 package org.apache.hadoop.yarn.server.resourcemanager.scheduler.fair.policies;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Comparator;
@@ -15,6 +16,7 @@ import org.apache.hadoop.yarn.server.resourcemanager.scheduler.fair.SchedulingPo
 import org.apache.hadoop.yarn.server.resourcemanager.scheduler.fair.policies.DominantResourceFairnessPolicy.DominantResourceFairnessComparator;
 import org.apache.hadoop.yarn.server.resourcemanager.scheduler.fair.policies.DominantResourceFairnessPolicy.DominantResourceFairnessComparator2;
 import org.apache.hadoop.yarn.server.resourcemanager.scheduler.fair.policies.DominantResourceFairnessPolicy.DominantResourceFairnessComparatorN;
+import org.apache.hadoop.yarn.server.resourcemanager.scheduler.fair.policies.TestPolicy.TestComparator2;
 import org.apache.hadoop.yarn.util.resource.DominantResourceCalculator;
 import org.apache.hadoop.yarn.util.resource.ResourceCalculator;
 import org.apache.hadoop.yarn.util.resource.Resources;
@@ -31,14 +33,13 @@ public class Test1Policy extends SchedulingPolicy {
 	
 	 public static final String NAME = "Test1";
 
-	  private static final int NUM_RESOURCES =
-	      ResourceUtils.getNumberOfKnownResourceTypes();
-	  private static final DominantResourceFairnessComparator COMPARATORN =
-	      new DominantResourceFairnessComparatorN();
-	  private static final DominantResourceFairnessComparator COMPARATOR2 =
-	      new DominantResourceFairnessComparator2();
-	  private static final DominantResourceCalculator CALCULATOR =
-	      new DominantResourceCalculator();
+	
+		private static final int NUM_RESOURCES =
+			      ResourceUtils.getNumberOfKnownResourceTypes();
+		private static final TestComparator2 COMPARATOR =
+			      new TestComparator2();
+		private static final ArrayList<Schedulable>  schedulables = null ;
+		private static final ArrayList<Integer>  fitnessOfAll = null ; 
 
 	  @Override
 	  public String getName() {
@@ -47,20 +48,15 @@ public class Test1Policy extends SchedulingPolicy {
 
 	  @Override
 	  public Comparator<Schedulable> getComparator() {
-	    if (NUM_RESOURCES == 2) {
-	      // To improve performance, if we know we're dealing with the common
-	      // case of only CPU and memory, then handle CPU and memory explicitly.
-	      return COMPARATOR2;
-	    } else {
-	      // Otherwise, do it the generic way.
-	      return COMPARATORN;
-	    }
+	    
+	      return COMPARATOR;
+	    
 
 	  }
 
 	  @Override
 	  public ResourceCalculator getResourceCalculator() {
-	    return CALCULATOR;
+	    return null;
 	  }
 
 	  @Override
@@ -103,9 +99,10 @@ public class Test1Policy extends SchedulingPolicy {
 
 	  @Override
 	  public void initialize(FSContext fsContext) {
-	    COMPARATORN.setFSContext(fsContext);
-	    COMPARATOR2.setFSContext(fsContext);
-	  }
+		    COMPARATOR.setFSContext(fsContext);
+		  }
+		
+		
 
 	  /**
 	   * This class compares two {@link Schedulable} instances according to the
@@ -113,7 +110,7 @@ public class Test1Policy extends SchedulingPolicy {
 	   * ratios are compared. Subclasses of this class will do the actual work of
 	   * the comparison, specialized for the number of configured resource types.
 	   */
-	  public abstract static class DominantResourceFairnessComparator
+	  public abstract static class TestComparator
 	      implements Comparator<Schedulable> {
 	    protected FSContext fsContext;
 
@@ -144,213 +141,13 @@ public class Test1Policy extends SchedulingPolicy {
 
 	  /**
 	   * This class compares two {@link Schedulable} instances according to the
-	   * DRF policy. If neither instance is below min share, approximate fair share
-	   * ratios are compared. This class makes no assumptions about the number of
-	   * resource types.
-	   */
-	  @VisibleForTesting
-	  static class DominantResourceFairnessComparatorN
-	      extends DominantResourceFairnessComparator {
-	    @Override
-	    public int compare(Schedulable s1, Schedulable s2) {
-	      Resource usage1 = s1.getResourceUsage();
-	      Resource usage2 = s2.getResourceUsage();
-	      Resource minShare1 = s1.getMinShare();
-	      Resource minShare2 = s2.getMinShare();
-	      Resource clusterCapacity = fsContext.getClusterResource();
-
-	      // These arrays hold the usage, fair, and min share ratios for each
-	      // resource type. ratios[0][x] are the usage ratios, ratios[1][x] are
-	      // the fair share ratios, and ratios[2][x] are the min share ratios.
-	      float[][] ratios1 = new float[NUM_RESOURCES][3];
-	      float[][] ratios2 = new float[NUM_RESOURCES][3];
-
-	      // Calculate cluster shares and approximate fair shares for each
-	      // resource type of both schedulables.
-	      int dominant1 = calculateClusterAndFairRatios(usage1, clusterCapacity,
-	          ratios1, s1.getWeight());
-	      int dominant2 = calculateClusterAndFairRatios(usage2, clusterCapacity,
-	          ratios2, s2.getWeight());
-
-	      // A queue is needy for its min share if its dominant resource
-	      // (with respect to the cluster capacity) is below its configured min
-	      // share for that resource
-	      boolean s1Needy =
-	          usage1.getResources()[dominant1].getValue() <
-	          minShare1.getResources()[dominant1].getValue();
-	      boolean s2Needy =
-	          usage2.getResources()[dominant2].getValue() <
-	          minShare2.getResources()[dominant2].getValue();
-	      
-	      int res;
-
-	      if (!s2Needy && !s1Needy) {
-	        // Sort shares by usage ratio and compare them by approximate fair share
-	        // ratio
-	        sortRatios(ratios1, ratios2);
-	        res = compareRatios(ratios1, ratios2, 1);
-	      } else if (s1Needy && !s2Needy) {
-	        res = -1;
-	      } else if (s2Needy && !s1Needy) {
-	        res = 1;
-	      } else { // both are needy below min share
-	        // Calculate the min share ratios, then sort by usage ratio, and compare
-	        // by min share ratio
-	        calculateMinShareRatios(usage1, minShare1, ratios1);
-	        calculateMinShareRatios(usage2, minShare2, ratios2);
-	        sortRatios(ratios1, ratios2);
-	        res = compareRatios(ratios1, ratios2, 2);
-	      }
-
-	      if (res == 0) {
-	        res = compareAttribrutes(s1, s2);
-	      }
-
-	      return res;
-	    }
-
-	    /**
-	     * Sort both ratios arrays according to the usage ratios (the
-	     * first index of the inner arrays, e.g. {@code ratios1[x][0]}).
-	     *
-	     * @param ratios1 the first ratios array
-	     * @param ratios2 the second ratios array
-	     */
-	    @VisibleForTesting
-	    void sortRatios(float[][] ratios1, float[][]ratios2) {
-	      // sort order descending by resource share
-	      Arrays.sort(ratios1, (float[] o1, float[] o2) ->
-	          (int) Math.signum(o2[0] - o1[0]));
-	      Arrays.sort(ratios2, (float[] o1, float[] o2) ->
-	          (int) Math.signum(o2[0] - o1[0]));
-	    }
-
-	    /**
-	     * Calculate a resource's usage ratio and approximate fair share ratio.
-	     * The {@code ratios} array will be populated with both the usage ratio
-	     * and the approximate fair share ratio for each resource type. The usage
-	     * ratio is calculated as {@code resource} divided by {@code cluster}.
-	     * The approximate fair share ratio is calculated as the usage ratio
-	     * divided by {@code weight}. If the cluster's resources are 100MB and
-	     * 10 vcores, and the usage ({@code resource}) is 10 MB and 5 CPU, the
-	     * usage ratios will be 0.1 and 0.5. If the weights are 2, the fair
-	     * share ratios will be 0.05 and 0.25.
-	     *
-	     * The approximate fair share ratio is the usage divided by the
-	     * approximate fair share, i.e. the cluster resources times the weight.
-	     * The approximate fair share is an acceptable proxy for the fair share
-	     * because when comparing resources, the resource with the higher weight
-	     * will be assigned by the scheduler a proportionally higher fair share.
-	     *
-	     * The {@code ratios} array must be at least <i>n</i> x 2, where <i>n</i>
-	     * is the number of resource types. Only the first and second indices of
-	     * the inner arrays in the {@code ratios} array will be used, e.g.
-	     * {@code ratios[x][0]} and {@code ratios[x][1]}.
-	     *
-	     * The return value will be the index of the dominant resource type in the
-	     * {@code ratios} array. The dominant resource is the resource type for
-	     * which {@code resource} has the largest usage ratio.
-	     *
-	     * @param resource the resource for which to calculate ratios
-	     * @param cluster the total cluster resources
-	     * @param ratios the share ratios array to populate
-	     * @param weight the resource weight
-	     * @return the index of the resource type with the largest cluster share
-	     */
-	    @VisibleForTesting
-	    int calculateClusterAndFairRatios(Resource resource, Resource cluster,
-	        float[][] ratios, float weight) {
-	      ResourceInformation[] resourceInfo = resource.getResources();
-	      ResourceInformation[] clusterInfo = cluster.getResources();
-	      int max = 0;
-
-	      for (int i = 0; i < clusterInfo.length; i++) {
-	        // First calculate the cluster share
-	        ratios[i][0] =
-	            resourceInfo[i].getValue() / (float) clusterInfo[i].getValue();
-
-	        // Use the cluster share to find the dominant resource
-	        if (ratios[i][0] > ratios[max][0]) {
-	          max = i;
-	        }
-
-	        // Now divide by the weight to get the approximate fair share.
-	        // It's OK if the weight is zero, because the floating point division
-	        // will yield Infinity, i.e. this Schedulable will lose out to any
-	        // other Schedulable with non-zero weight.
-	        ratios[i][1] = ratios[i][0] / weight;
-	      }
-
-	      return max;
-	    }
-	    
-	    /**
-	     * Calculate a resource's min share ratios. The {@code ratios} array will be
-	     * populated with the {@code resource} divided by {@code minShare} for each
-	     * resource type. If the min shares are 5 MB and 10 vcores, and the usage
-	     * ({@code resource}) is 10 MB and 5 CPU, the ratios will be 2 and 0.5.
-	     *
-	     * The {@code ratios} array must be <i>n</i> x 3, where <i>n</i> is the
-	     * number of resource types. Only the third index of the inner arrays in
-	     * the {@code ratios} array will be used, e.g. {@code ratios[x][2]}.
-	     *
-	     * @param resource the resource for which to calculate min shares
-	     * @param minShare the min share
-	     * @param ratios the share ratios array to populate
-	     */
-	    @VisibleForTesting
-	    void calculateMinShareRatios(Resource resource, Resource minShare,
-	        float[][] ratios) {
-	      ResourceInformation[] resourceInfo = resource.getResources();
-	      ResourceInformation[] minShareInfo = minShare.getResources();
-
-	      for (int i = 0; i < minShareInfo.length; i++) {
-	        ratios[i][2] =
-	            resourceInfo[i].getValue() / (float) minShareInfo[i].getValue();
-	      }
-	    }
-
-	    /**
-	     * Compare the two ratios arrays and return -1, 0, or 1 if the first array
-	     * is less than, equal to, or greater than the second array, respectively.
-	     * The {@code index} parameter determines which index of the inner arrays
-	     * will be used for the comparisons. 0 is for usage ratios, 1 is for
-	     * fair share ratios, and 2 is for the min share ratios. The ratios arrays
-	     * are assumed to be sorted in descending order by usage ratio.
-	     *
-	     * @param ratios1 the first shares array
-	     * @param ratios2 the second shares array
-	     * @param index the outer index of the ratios arrays to compare. 0 is for
-	     * usage ratio, 1 is for approximate fair share ratios, and 1 is for min
-	     * share ratios
-	     * @return -1, 0, or 1 if the first array is less than, equal to, or
-	     * greater than the second array, respectively
-	     */
-	    @VisibleForTesting
-	    int compareRatios(float[][] ratios1, float[][] ratios2, int index) {
-	      int ret = 0;
-
-	      for (int i = 0; i < ratios1.length; i++) {
-	        ret = (int) Math.signum(ratios1[i][index] - ratios2[i][index]);
-
-	        if (ret != 0) {
-	          break;
-	        }
-	      }
-
-	      return ret;
-	    }
-	  }
-
-	  /**
-	   * This class compares two {@link Schedulable} instances according to the
 	   * DRF policy in the special case that only CPU and memory are configured.
 	   * If neither instance is below min share, approximate fair share
 	   * ratios are compared.
 	   */
 	  @VisibleForTesting
-	  static class DominantResourceFairnessComparator2
-	      extends DominantResourceFairnessComparator {
+	  static class TestComparator2
+	      extends TestComparator {
 	    @Override
 	    public int compare(Schedulable s1, Schedulable s2) {
 	      ResourceInformation[] resourceInfo1 =
@@ -423,6 +220,17 @@ public class Test1Policy extends SchedulingPolicy {
 	        res = compareAttribrutes(s1, s2);
 	      }
 
+	      // adding schedulable to array of schedulables
+	      if (res == -1) {
+	     	 AddTOArray(s1);
+	   	   
+	      }
+	      if (res == 1) {
+	     	 AddTOArray(s2);
+	   	   
+	      }
+	      
+	      
 	      return res;
 	    }
 
@@ -506,7 +314,7 @@ public class Test1Policy extends SchedulingPolicy {
 	    }
 	    //**************************************************************************
 	    @VisibleForTesting
-	 static
+	 
 	    int calculateFitness(ResourceInformation[] request,
 	        float weight, ResourceInformation[] clusterInfo) {
 	 	  
@@ -559,7 +367,7 @@ public class Test1Policy extends SchedulingPolicy {
 	 	   return ret ;
 	    }
 	  //***********************************************************************
-	     static double [] calculateOurFairness(ResourceInformation[] resourceInfo,
+	      double [] calculateOurFairness(ResourceInformation[] resourceInfo,
 		        float weight, ResourceInformation[] minshare) {
 		      
 		    double[] ourFairness = null;
@@ -572,10 +380,30 @@ public class Test1Policy extends SchedulingPolicy {
 
 		   return ourFairness;
 	   }
+	    //*********************************************************************************
+	      void AddTOArray(Schedulable s) {
+	 		if (! schedulables.contains(s)) {
+	 			
+	 			schedulables.add(s);
+	 			Resource clusterCapacity =
+	 			          fsContext.getClusterResource();
+	 		   Resource clusterUsage = 
+	 				      fsContext.getClusterResource();
+	 		   Resource clusterAvailableResources =
+	 			        Resources.subtract(clusterCapacity, clusterUsage);
+	 		   
+	 			int fitness = calculateFitness(s.getDemand().getResources(),
+	 					s.getWeight(), clusterAvailableResources.getResources());
+	 			fitnessOfAll.add(fitness);
+	 		}
+	 		
+	 	
+	 	}
+	//*********************************************************************************
 	   //*****************************************************************************
 	     double calculateTemperature() {
 	 	     
-	 	   return Temperature;
+	 	   return 0;
 	    }
 	     //***********************************************************************************
 	  }
