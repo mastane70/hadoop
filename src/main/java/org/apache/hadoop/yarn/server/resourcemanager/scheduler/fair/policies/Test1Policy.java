@@ -2,6 +2,7 @@ package org.apache.hadoop.yarn.server.resourcemanager.scheduler.fair.policies;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.Comparator;
 
 import com.google.common.annotations.VisibleForTesting;
@@ -38,8 +39,13 @@ public class Test1Policy extends SchedulingPolicy {
 			      ResourceUtils.getNumberOfKnownResourceTypes();
 		private static final TestComparator2 COMPARATOR =
 			      new TestComparator2();
-		private static final ArrayList<Schedulable>  schedulables = null ;
-		private static final ArrayList<Integer>  fitnessOfAll = null ; 
+		private static ArrayList<Schedulable>  schedulables = null ;
+		private static ArrayList<Integer>  fitnessOfAll = null ;
+	    private static double temperature = calculateTemperature();
+
+
+
+		
 
 	  @Override
 	  public String getName() {
@@ -102,7 +108,14 @@ public class Test1Policy extends SchedulingPolicy {
 		    COMPARATOR.setFSContext(fsContext);
 		  }
 		
-		
+	  static double calculateTemperature() {
+	 	     int max = Collections.max(fitnessOfAll);
+	 	     int min = Collections.min(fitnessOfAll);
+	 	     int entropy = max - min ;
+	 	     double temperature = entropy * 1000 ;
+	 	   return temperature;
+	    }
+
 
 	  /**
 	   * This class compares two {@link Schedulable} instances according to the
@@ -149,45 +162,68 @@ public class Test1Policy extends SchedulingPolicy {
 	  static class TestComparator2
 	      extends TestComparator {
 	    @Override
+	    
 	    public int compare(Schedulable s1, Schedulable s2) {
-	      ResourceInformation[] resourceInfo1 =
-	          s1.getResourceUsage().getResources();
-	      ResourceInformation[] resourceInfo2 =
-	          s2.getResourceUsage().getResources();
-	      ResourceInformation[] request1 = s1.getDemand().getResources();
-		  ResourceInformation[] request2 = s2.getDemand().getResources();
-	      ResourceInformation[] minShareInfo1 = s1.getMinShare().getResources();
-	      ResourceInformation[] minShareInfo2 = s2.getMinShare().getResources();
-	      ResourceInformation[] clusterInfo =
-	          fsContext.getClusterResource().getResources();
-	      double[] shares1 = new double[2];
-	      double[] shares2 = new double[2];
-
-	      int dominant1 = calculateClusterAndFairRatios(resourceInfo1,
-	          s1.getWeight(), clusterInfo, shares1);
-	      int dominant2 = calculateClusterAndFairRatios(resourceInfo2,
-	          s2.getWeight(), clusterInfo, shares2);
-
-	      // A queue is needy for its min share if its dominant resource
-	      // (with respect to the cluster capacity) is below its configured min
-	      // share for that resource
-	      boolean s1Needy = resourceInfo1[dominant1].getValue() <
-	          minShareInfo1[dominant1].getValue();
-	      boolean s2Needy = resourceInfo1[dominant2].getValue() <
-	          minShareInfo2[dominant2].getValue();
+	 	   ResourceInformation[] usage1 =
+			          s1.getResourceUsage().getResources();
+		   ResourceInformation[] uage2 =
+			          s2.getResourceUsage().getResources();
+		   ResourceInformation[] request1 = s1.getDemand().getResources();
+		   ResourceInformation[] request2 = s2.getDemand().getResources();
+		   ResourceInformation[] minShareInfo1 = s1.getMinShare().getResources();
+		   ResourceInformation[] minShareInfo2 = s2.getMinShare().getResources();
+		   
+		   
+		   Resource clusterCapacity =
+			          fsContext.getClusterResource();
+		   Resource clusterUsage = 
+				      fsContext.getClusterResource();
+		   Resource clusterAvailableResources =
+			        Resources.subtract(clusterCapacity, clusterUsage);
+		   
+		   // shares[] = request/clustercapacity*weight
+		   double[] shares1 = new double[2];
+		   double[] shares2 = new double[2];
+		   
+		   
+		   // dominant=0 => memory is dominant resource and dominant=1 => v_core is dominant resource
+		   int dominant1 = calculateClusterAndFairRatios(request1,
+			          s1.getWeight(), clusterCapacity.getResources(), shares1);
+		   int dominant2 = calculateClusterAndFairRatios(request2,
+			          s2.getWeight(), clusterCapacity.getResources(), shares2);
+		   
+		   boolean s1Needy = usage1[dominant1].getValue() <
+			          minShareInfo1[dominant1].getValue();
+		   boolean s2Needy = uage2[dominant2].getValue() <
+			          minShareInfo2[dominant2].getValue();
+		   
+		   
+		   // These arrays hold the fairness for needy time and not needy time
+		   // ratios[0][x] are if not needy, ourFairness[] = request/cluster*weight 
+		   // ratios[1][x] are needy, ourFairness[] = request/minshares*weight
+		     
+	       double[][] ourFairness1 =new double [2][NUM_RESOURCES];
+	       double[][] ourFairness2 = new double [2][NUM_RESOURCES];
+	       ourFairness1[0] = calculateOurFairness(usage1, s1.getWeight(), clusterCapacity.getResources());
+	       ourFairness1[1] = calculateOurFairness(uage2, s2.getWeight(), minShareInfo1);
+	       ourFairness2[0] = calculateOurFairness(usage1, s1.getWeight(), clusterCapacity.getResources());
+	       ourFairness2[1] = calculateOurFairness(uage2, s2.getWeight(), minShareInfo2);
+	       
+	       
+	       int fitness1 = calculateFitness(
+	    		   request1, s1.getWeight(), clusterAvailableResources.getResources());
+	       int fitness2 = calculateFitness(
+	    		   request2, s2.getWeight(), clusterAvailableResources.getResources());
 	      
-	      double[] ourFairness1 = new double[2];
-	      double[] ourFairness2 = new double[2];
-	      	      
-	      ourFairness1 = calculateOurFairness(resourceInfo1, s1.getWeight(), clusterInfo);
-	      ourFairness2 = calculateOurFairness(resourceInfo2, s2.getWeight(), clusterInfo);
+	       int res = 0; 
+	      
+	       
 
-	      int res;
 
 	      if (!s2Needy && !s1Needy) {
 	    	  
-	    	  double temperature= calculateTemperature();
-	         res = compareSA(temperature, ourFairness1[dominant1], ourFairness2[dominant2]) ; 
+	    	  
+	         res = compareSA( ourFairness1[0][dominant1], ourFairness2[0][dominant2]) ; 
 	         	if(res==0) {
 	         		res = compareAttribrutes(s1, s2);}  
 	       
@@ -202,17 +238,14 @@ public class Test1Policy extends SchedulingPolicy {
 	        res = -1;
 	      } else if (s2Needy && !s1Needy) {
 	        res = 1;
-	      } else {
-	        double[] minShares1 =
-	            calculateMinShareRatios(resourceInfo1, minShareInfo1);
-	        double[] minShares2 =
-	            calculateMinShareRatios(resourceInfo2, minShareInfo2);
+	      } else if (s1Needy && s2Needy) {
+	        
 
-	        res = (int) Math.signum(minShares1[dominant1] - minShares2[dominant2]);
+	        res = (int) Math.signum(minShareInfo1[dominant1].getValue() - minShareInfo2[dominant2].getValue());
 
 	        if (res == 0) {
-	          res = (int) Math.signum(minShares1[1 - dominant1] -
-	              minShares2[1 - dominant2]);
+	          res = (int) Math.signum(minShareInfo1[1 - dominant1].getValue() -
+	              minShareInfo2[1 - dominant2].getValue());
 	        }
 	      }
 
@@ -331,7 +364,7 @@ public class Test1Policy extends SchedulingPolicy {
 	    
 	    //**********************************************************************
 	    
-	    int compareSA(Double temperature , double ourfairness1, double ourfairness2) {
+	    int compareSA( double ourfairness1, double ourfairness2) {
 	 	   int ret = 0;
 	 	   double minTemperature = 10 ;
 	        double Alpha= 0.9 ;
@@ -339,17 +372,17 @@ public class Test1Policy extends SchedulingPolicy {
 	 	   
 	  {
 	     	   
-	     	   ret = -1; //initial state is S1
+	     	   ret = -1; //initial state is S2
 	     	   if( temperature > minTemperature ) {
 	     		   
 	     		   // simulated annealing starts
 	         	   
-	     	   if(ourfairness1 < ourfairness2){
-	         	   ret = 1; // moves to next state
+	     	   if(ourfairness1 > ourfairness2){
+	         	   ret = +1; // moves to next state
 	         	  
-	            }else if (ourfairness1 > ourfairness2){
+	            }else if (ourfairness1 < ourfairness2){
 	         	   
-	         	   double p= Math.exp((ourfairness2-ourfairness1)/temperature) ;
+	         	   double p= Math.exp(-1*(ourfairness2-ourfairness1)/temperature) ;
 	         	   
 	         		   ret=  p > rand  ?
 	         				   1 : -1;
@@ -399,13 +432,9 @@ public class Test1Policy extends SchedulingPolicy {
 	 		
 	 	
 	 	}
-	//*********************************************************************************
-	   //*****************************************************************************
-	     double calculateTemperature() {
-	 	     
-	 	   return 0;
-	    }
+	
 	     //***********************************************************************************
 	  }
-
+	  
+	  
 }

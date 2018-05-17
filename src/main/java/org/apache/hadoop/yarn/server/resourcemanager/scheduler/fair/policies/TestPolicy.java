@@ -3,6 +3,7 @@ package org.apache.hadoop.yarn.server.resourcemanager.scheduler.fair.policies;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.Comparator;
 
 import com.google.common.annotations.VisibleForTesting;
@@ -29,7 +30,8 @@ public class TestPolicy extends SchedulingPolicy {
 	private static final TestComparator2 COMPARATOR =
 		      new TestComparator2();
 	private static final ArrayList<Schedulable>  schedulables = null ;
-	private static final ArrayList<Integer>  fitnessOfAll = null ; 
+	private static final ArrayList<Double>  fairnessOfAll = null ; 
+	private static double temperature = calculateTemperature();
 	
 	@Override
 	public ResourceCalculator getResourceCalculator() {
@@ -95,6 +97,16 @@ public class TestPolicy extends SchedulingPolicy {
 	    COMPARATOR.setFSContext(fsContext);
 	  }
 	
+	
+	static double calculateTemperature() {
+	     double max = Collections.max(fairnessOfAll);
+	     double min = Collections.min(fairnessOfAll);
+	     double entropy = max - min ;
+	     double temperature = entropy * 1000 ;
+	   return temperature;
+}
+	
+	
 	public abstract static class TestComparator
     implements Comparator<Schedulable> {
   protected FSContext fsContext;
@@ -102,6 +114,9 @@ public class TestPolicy extends SchedulingPolicy {
   public void setFSContext(FSContext fsContext) {
     this.fsContext = fsContext;
   }
+  
+  
+
 
   /**
    * This method is used when apps are tied in fairness ratio. It breaks
@@ -173,10 +188,10 @@ public class TestPolicy extends SchedulingPolicy {
 	     
        double[][] ourFairness1 =new double [2][NUM_RESOURCES];
        double[][] ourFairness2 = new double [2][NUM_RESOURCES];
-       ourFairness1[0] = calculateOurFairness(usage1, s1.getWeight(), minShareInfo1);
-       ourFairness1[1] = calculateOurFairness(uage2, s2.getWeight(), minShareInfo2);
+       ourFairness1[0] = calculateOurFairness(usage1, s1.getWeight(), clusterCapacity.getResources());
+       ourFairness1[1] = calculateOurFairness(uage2, s2.getWeight(), minShareInfo1);
        ourFairness2[0] = calculateOurFairness(usage1, s1.getWeight(), clusterCapacity.getResources());
-       ourFairness2[1] = calculateOurFairness(uage2, s2.getWeight(), clusterCapacity.getResources());
+       ourFairness2[1] = calculateOurFairness(uage2, s2.getWeight(), minShareInfo2);
        
        
        int fitness1 = calculateFitness(
@@ -215,11 +230,11 @@ public class TestPolicy extends SchedulingPolicy {
        }
      
      if (res == -1) {
-    	 AddTOArray(s1);
+    	 AddTOArray(s1 , dominant1);
   	   
      }
      if (res == 1) {
-    	 AddTOArray(s2);
+    	 AddTOArray(s2 , dominant2);
   	   
      }
        
@@ -360,7 +375,9 @@ public class TestPolicy extends SchedulingPolicy {
    
 
 //*********************************************************************************
-      void AddTOArray(Schedulable s) {
+     // adds  value of ourfairness of dominant type to fairnessOfAll
+     // adds schedulables Array
+      void AddTOArray(Schedulable s , int dominant) {
  		if (! schedulables.contains(s)) {
  			
  			schedulables.add(s);
@@ -371,9 +388,10 @@ public class TestPolicy extends SchedulingPolicy {
  		   Resource clusterAvailableResources =
  			        Resources.subtract(clusterCapacity, clusterUsage);
  		   
- 			int fitness = calculateFitness(s.getDemand().getResources(),
- 					s.getWeight(), clusterAvailableResources.getResources());
- 			fitnessOfAll.add(fitness);
+ 			double[] fairness = calculateOurFairness(s.getResourceUsage().getResources(),
+ 					s.getWeight(), s.getMinShare().getResources());
+
+ 			fairnessOfAll.add(fairness[dominant]);
  		}
  		
  	
