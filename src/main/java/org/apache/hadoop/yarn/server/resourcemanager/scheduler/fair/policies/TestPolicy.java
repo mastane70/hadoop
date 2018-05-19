@@ -32,8 +32,12 @@ public class TestPolicy extends SchedulingPolicy {
 	private static final ArrayList<Schedulable>  schedulables = null ;
 	private static final ArrayList<Double>  NoneNeedyfairnessOfAll = null ; 
 	private static final ArrayList<Double>  NeedyfairnessOfAll = null ; 
-	private static double Needytemperature = calculateTemperature(true);
-	private static double NoneNeedytemperature = calculateTemperature(false);
+	private static final int NeedyIndex = 1 ;
+	private static final int NotNeedyIndex = 0 ;
+	private static double[] temperature = {calculateTemperature(NotNeedyIndex) ,
+			calculateTemperature(NeedyIndex)} ;
+	
+	//temperature[1] when it's needy && temperature[0] when it's not needy
 	
 	@Override
 	public ResourceCalculator getResourceCalculator() {
@@ -100,9 +104,9 @@ public class TestPolicy extends SchedulingPolicy {
 	  }
 	
 	
-	static double calculateTemperature(boolean SaIsNeedy) {
+	static double calculateTemperature(int Needy) {
 		 double temperature ;
-		 if (SaIsNeedy) {
+		 if (Needy == NeedyIndex) {
 	     double max = Collections.max(NeedyfairnessOfAll);
 	     double min = Collections.min(NeedyfairnessOfAll);
 	     double entropy = max - min ;
@@ -214,7 +218,7 @@ public class TestPolicy extends SchedulingPolicy {
 
        if (!s2Needy && !s1Needy) {
     	  
-         res = compareSA( fitness1, fitness2) ; 
+         res = compareSA( fitness1, fitness2, NotNeedyIndex) ; 
          	if(res==0) {
          		res = compareAttribrutes(s1, s2);
          	}
@@ -230,7 +234,7 @@ public class TestPolicy extends SchedulingPolicy {
        } else if (s2Needy && s1Needy) {
     	  
     	   
-    	   res = compareSA( fitness1, fitness2) ;
+    	   res = compareSA( fitness1, fitness2, NeedyIndex) ;
     	   if (res == 0){
         	   res = compareAttribrutes(s1, s2);
     	   }
@@ -320,17 +324,18 @@ public class TestPolicy extends SchedulingPolicy {
    
  //**********************************************************************
    
-   int compareSA( float fitness1, float fitness2 , boolean SaIsNeedy) {
+   int compareSA( float fitness1, float fitness2 , int ISNeedy) {
 	   int ret = 0;
 	   double minTemperature = 10 ;
-	   double temperature ; 
+	 
        double Alpha= 0.9 ;
        double rand= Math.random(); 
+       
 	   
  {
     	   
     	   ret = -1; //initial state is S1
-    	   if( temperature > minTemperature ) {
+    	   if( temperature[ISNeedy] > minTemperature ) {
     		   
     		   // simulated annealing starts
         	   
@@ -339,11 +344,11 @@ public class TestPolicy extends SchedulingPolicy {
         	  
            }else if (fitness1 > fitness2){
         	   
-        	   double p= Math.exp((fitness2-fitness1)/temperature) ;
+        	   double p= Math.exp((fitness2-fitness1)/ temperature[ISNeedy]) ;
         	   
         		   ret=  p > rand  ?
         				   1 : -1;
-        		   temperature*= Alpha ;
+        		   temperature[ISNeedy]*= Alpha ;
         	   
            
         		  
