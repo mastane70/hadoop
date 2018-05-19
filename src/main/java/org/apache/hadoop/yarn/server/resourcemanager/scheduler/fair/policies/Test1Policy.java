@@ -226,14 +226,7 @@ public class Test1Policy extends SchedulingPolicy {
 	         res = compareSA( ourFairness1[0][dominant1], ourFairness2[0][dominant2]) ; 
 	         	if(res==0) {
 	         		res = compareAttribrutes(s1, s2);}  
-	       
-
-	        if (res == 0) {
-	          // Because memory and CPU are indices 0 and 1, we can find the
-	          // non-dominant index by subtracting the dominant index from 1.
-	          res = (int) Math.signum(shares1[1 - dominant1] -
-	              shares2[1 - dominant2]);
-	        }
+	            
 	      } else if (s1Needy && !s2Needy) {
 	        res = -1;
 	      } else if (s2Needy && !s1Needy) {

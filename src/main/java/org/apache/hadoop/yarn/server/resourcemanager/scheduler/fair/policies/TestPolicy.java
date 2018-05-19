@@ -30,8 +30,10 @@ public class TestPolicy extends SchedulingPolicy {
 	private static final TestComparator2 COMPARATOR =
 		      new TestComparator2();
 	private static final ArrayList<Schedulable>  schedulables = null ;
-	private static final ArrayList<Double>  fairnessOfAll = null ; 
-	private static double temperature = calculateTemperature();
+	private static final ArrayList<Double>  NoneNeedyfairnessOfAll = null ; 
+	private static final ArrayList<Double>  NeedyfairnessOfAll = null ; 
+	private static double Needytemperature = calculateTemperature(true);
+	private static double NoneNeedytemperature = calculateTemperature(false);
 	
 	@Override
 	public ResourceCalculator getResourceCalculator() {
@@ -98,11 +100,19 @@ public class TestPolicy extends SchedulingPolicy {
 	  }
 	
 	
-	static double calculateTemperature() {
-	     double max = Collections.max(fairnessOfAll);
-	     double min = Collections.min(fairnessOfAll);
+	static double calculateTemperature(boolean SaIsNeedy) {
+		 double temperature ;
+		 if (SaIsNeedy) {
+	     double max = Collections.max(NeedyfairnessOfAll);
+	     double min = Collections.min(NeedyfairnessOfAll);
 	     double entropy = max - min ;
-	     double temperature = entropy * 1000 ;
+	      temperature = entropy * 1000 ;
+		 }else {
+			 double max = Collections.max(NoneNeedyfairnessOfAll);
+		     double min = Collections.min(NoneNeedyfairnessOfAll);
+		     double entropy = max - min ;
+		      temperature = entropy * 1000 ;
+		 }
 	   return temperature;
 }
 	
@@ -203,9 +213,8 @@ public class TestPolicy extends SchedulingPolicy {
        
 
        if (!s2Needy && !s1Needy) {
-    	   double temperature= calculateTemperature(ourFairness1[0],ourFairness2[0],
-    			  dominant1, dominant2);
-         res = compareSA(temperature, fitness1, fitness2) ; 
+    	  
+         res = compareSA( fitness1, fitness2) ; 
          	if(res==0) {
          		res = compareAttribrutes(s1, s2);
          	}
@@ -219,10 +228,9 @@ public class TestPolicy extends SchedulingPolicy {
          res = 1;
          
        } else if (s2Needy && s1Needy) {
-    	   double temperature= calculateTemperature(ourFairness1[1],ourFairness2[1],
-     			  dominant1, dominant2);
+    	  
     	   
-    	   res = compareSA(temperature, fitness1, fitness2) ;
+    	   res = compareSA( fitness1, fitness2) ;
     	   if (res == 0){
         	   res = compareAttribrutes(s1, s2);
     	   }
@@ -312,11 +320,12 @@ public class TestPolicy extends SchedulingPolicy {
    
  //**********************************************************************
    
-   int compareSA(Double temperature , float fitness1, float fitness2) {
+   int compareSA( float fitness1, float fitness2 , boolean SaIsNeedy) {
 	   int ret = 0;
 	   double minTemperature = 10 ;
+	   double temperature ; 
        double Alpha= 0.9 ;
-       double rand= Math.random();
+       double rand= Math.random(); 
 	   
  {
     	   
@@ -362,17 +371,7 @@ public class TestPolicy extends SchedulingPolicy {
 	   return ourFairness;
    }
    //*****************************************************************************
-     double calculateTemperature(double [] ourFairness1, double [] ourFairness2, 
-    		 int dominant1, int dominant2) {
- 	      double Temperature = 
- 	    		  Math.abs(ourFairness1[dominant1] - ourFairness2[dominant2]) *1000 ;
- 	      if (Temperature == 0) {
- 	    	 Temperature = 
- 	 	    	  Math.abs(ourFairness1[1 - dominant1] - ourFairness2[1 - dominant2]) *1000 ;
- 	      }
- 	   return Temperature;
-    }
-   
+  
 
 //*********************************************************************************
      // adds  value of ourfairness of dominant type to fairnessOfAll
@@ -380,18 +379,17 @@ public class TestPolicy extends SchedulingPolicy {
       void AddTOArray(Schedulable s , int dominant) {
  		if (! schedulables.contains(s)) {
  			
- 			schedulables.add(s);
- 			Resource clusterCapacity =
- 			          fsContext.getClusterResource();
- 		   Resource clusterUsage = 
- 				      fsContext.getClusterResource();
- 		   Resource clusterAvailableResources =
- 			        Resources.subtract(clusterCapacity, clusterUsage);
- 		   
- 			double[] fairness = calculateOurFairness(s.getResourceUsage().getResources(),
+ 	
+ 			double[] Needyfairness = calculateOurFairness(s.getResourceUsage().getResources(),
  					s.getWeight(), s.getMinShare().getResources());
-
- 			fairnessOfAll.add(fairness[dominant]);
+ 			NeedyfairnessOfAll.add(Needyfairness[dominant]);
+ 			
+ 			Resource clusterCapacity =
+			          fsContext.getClusterResource();
+ 			
+ 			double[] NoneNeedyfairness = calculateOurFairness(s.getResourceUsage().getResources(),
+ 					s.getWeight(), clusterCapacity.getResources());
+ 			NoneNeedyfairnessOfAll.add(NoneNeedyfairness[dominant]);
  		}
  		
  	
