@@ -39,6 +39,8 @@ public class Test1Policy extends SchedulingPolicy {
 			      ResourceUtils.getNumberOfKnownResourceTypes();
 		private static final TestComparator2 COMPARATOR =
 			      new TestComparator2();
+		private static final DominantResourceCalculator CALCULATOR =
+			      new DominantResourceCalculator();
 		private static ArrayList<Schedulable>  schedulables = null ;
 		private static ArrayList<Integer>  fitnessOfAll = null ;
 	   
@@ -61,7 +63,7 @@ public class Test1Policy extends SchedulingPolicy {
 
 	  @Override
 	  public ResourceCalculator getResourceCalculator() {
-	    return null;
+	    return CALCULATOR;
 	  }
 
 	  @Override
@@ -410,6 +412,7 @@ public class Test1Policy extends SchedulingPolicy {
 	   }
 	    //*********************************************************************************
 	      void AddTOArray(Schedulable s) {
+	    	  //if S does'nt exist
 	 		if (! schedulables.contains(s)) {
 	 			
 	 			schedulables.add(s);
@@ -423,6 +426,20 @@ public class Test1Policy extends SchedulingPolicy {
 	 			int fitness = calculateFitness(s.getDemand().getResources(),
 	 					s.getWeight(), clusterAvailableResources.getResources());
 	 			fitnessOfAll.add(fitness);
+	 		}
+	 		else {
+	 			//// if S exists => update fitnessOfAll
+	 			int index = schedulables.indexOf(s);
+	 			Resource clusterCapacity =
+	 			          fsContext.getClusterResource();
+	 		   Resource clusterUsage = 
+	 				      fsContext.getClusterResource();
+	 		   Resource clusterAvailableResources =
+	 			        Resources.subtract(clusterCapacity, clusterUsage);
+	 		   
+	 			int fitness = calculateFitness(s.getDemand().getResources(),
+	 					s.getWeight(), clusterAvailableResources.getResources());
+	 			fitnessOfAll.set(index, fitness);
 	 		}
 	 		
 	 	

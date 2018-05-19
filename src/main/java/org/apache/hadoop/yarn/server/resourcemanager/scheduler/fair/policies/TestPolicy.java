@@ -29,6 +29,8 @@ public class TestPolicy extends SchedulingPolicy {
 		      ResourceUtils.getNumberOfKnownResourceTypes();
 	private static final TestComparator2 COMPARATOR =
 		      new TestComparator2();
+	private static final DominantResourceCalculator CALCULATOR =
+		      new DominantResourceCalculator();
 	private static final ArrayList<Schedulable>  schedulables = null ;
 	private static final ArrayList<Double>  NoneNeedyfairnessOfAll = null ; 
 	private static final ArrayList<Double>  NeedyfairnessOfAll = null ; 
@@ -41,8 +43,8 @@ public class TestPolicy extends SchedulingPolicy {
 	@Override
 	public ResourceCalculator getResourceCalculator() {
 		// TODO Auto-generated method stub
-		//return CALCULATOR;
-		return null;
+	return CALCULATOR;
+		
 	}
 
 	@Override
@@ -382,6 +384,7 @@ public class TestPolicy extends SchedulingPolicy {
      // adds  value of ourfairness of dominant type to fairnessOfAll
      // adds schedulables Array
       void AddTOArray(Schedulable s , int dominant) {
+    	  //if S does'nt exist
  		if (! schedulables.contains(s)) {
  			
  	
@@ -396,8 +399,20 @@ public class TestPolicy extends SchedulingPolicy {
  					s.getWeight(), clusterCapacity.getResources());
  			NoneNeedyfairnessOfAll.add(NoneNeedyfairness[dominant]);
  		}
- 		
- 	
+ 		// if S exists => update NeedyfairnessOfAll and NoneNeedyfairnessOfAll
+ 		else {
+ 			int index = schedulables.indexOf(s);
+ 			double[] Needyfairness = calculateOurFairness(s.getResourceUsage().getResources(),
+ 					s.getWeight(), s.getMinShare().getResources());
+ 			NeedyfairnessOfAll.set(index, Needyfairness[dominant]);
+ 			
+ 			Resource clusterCapacity =
+			          fsContext.getClusterResource();
+ 			
+ 			double[] NoneNeedyfairness = calculateOurFairness(s.getResourceUsage().getResources(),
+ 					s.getWeight(), clusterCapacity.getResources());
+ 			NoneNeedyfairnessOfAll.set(index, NoneNeedyfairness[dominant]);
+ 		}
  	}
 //*********************************************************************************
 }	 
