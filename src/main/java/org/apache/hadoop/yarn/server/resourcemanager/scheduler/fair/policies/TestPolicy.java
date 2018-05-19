@@ -34,8 +34,7 @@ public class TestPolicy extends SchedulingPolicy {
 	private static final ArrayList<Double>  NeedyfairnessOfAll = null ; 
 	private static final int NeedyIndex = 1 ;
 	private static final int NotNeedyIndex = 0 ;
-	private static double[] temperature = {calculateTemperature(NotNeedyIndex) ,
-			calculateTemperature(NeedyIndex)} ;
+	
 	
 	//temperature[1] when it's needy && temperature[0] when it's not needy
 	
@@ -156,9 +155,10 @@ public class TestPolicy extends SchedulingPolicy {
 	
 	 static class TestComparator2
      extends TestComparator {
+		 
+		 private static double[] temperature = {calculateTemperature(NotNeedyIndex) ,
+					calculateTemperature(NeedyIndex)} ;
    @Override
-   
-   
    public int compare(Schedulable s1, Schedulable s2) {
 	   
 	   

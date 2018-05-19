@@ -41,8 +41,7 @@ public class Test1Policy extends SchedulingPolicy {
 			      new TestComparator2();
 		private static ArrayList<Schedulable>  schedulables = null ;
 		private static ArrayList<Integer>  fitnessOfAll = null ;
-	    private static double temperature = calculateTemperature();
-
+	   
 
 
 		
@@ -161,6 +160,9 @@ public class Test1Policy extends SchedulingPolicy {
 	  @VisibleForTesting
 	  static class TestComparator2
 	      extends TestComparator {
+		  
+		  private static double temperature = calculateTemperature();
+
 	    @Override
 	    
 	    public int compare(Schedulable s1, Schedulable s2) {
