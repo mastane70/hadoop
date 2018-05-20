@@ -1,12 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <classpath>
-	<classpathentry kind="lib" path="C:/Users/Mahsa/.m2/repository/org/apache/hadoop/hadoop-yarn-server-resourcemanager/3.0.1/hadoop-yarn-server-resourcemanager-3.0.1.jar" sourcepath="C:/Users/Mahsa/Desktop/hadoop-3.0.1-src">
-		<attributes>
-			<attribute name="source_encoding" value="UTF-8"/>
-		</attributes>
-	</classpathentry>
-	<classpathentry kind="lib" path="C:/Users/Mahsa/.m2/repository/org/apache/hadoop/hadoop-yarn-server-resourcemanager/2.8.1/hadoop-yarn-server-resourcemanager-2.8.1.jar"/>
-	<classpathentry kind="lib" path="C:/Users/Mahsa/.m2/repository/org/apache/hadoop/hadoop-yarn-server-resourcemanager/3.0.0/hadoop-yarn-server-resourcemanager-3.0.0.jar"/>
 	<classpathentry kind="src" output="target/classes" path="src/main/java">
 		<attributes>
 			<attribute name="optional" value="true"/>
@@ -34,12 +27,15 @@
 			<attribute name="maven.pomderived" value="true"/>
 		</attributes>
 	</classpathentry>
-	<classpathentry kind="lib" path="C:/Users/Mahsa/.m2/repository/org/apache/hadoop/hadoop-yarn-server-common/3.0.1/hadoop-yarn-server-common-3.0.1.jar"/>
-	<classpathentry kind="lib" path="C:/Users/Mahsa/Desktop/hadoop-3.0.1-src"/>
 	<classpathentry kind="con" path="org.eclipse.m2e.MAVEN2_CLASSPATH_CONTAINER">
 		<attributes>
 			<attribute name="maven.pomderived" value="true"/>
 		</attributes>
 	</classpathentry>
+	<classpathentry kind="lib" path="C:/Users/Mahsa/Desktop/jars/hadoop-yarn-common-3.1.0.jar"/>
+	<classpathentry kind="lib" path="C:/Users/Mahsa/Desktop/jars/hadoop-yarn-server-resourcemanager-3.1.0.jar"/>
+	<classpathentry kind="lib" path="C:/Users/Mahsa/Desktop/jars/hadoop-yarn-server-tests-3.1.0.jar"/>
+	<classpathentry kind="lib" path="C:/Users/Mahsa/Desktop/hadoop-yarn-api-3.0.1.jar"/>
+	<classpathentry kind="lib" path="C:/Users/Mahsa/Desktop/hadoop-yarn-server-resourcemanager-2.8.0.jar"/>
 	<classpathentry kind="output" path="target/classes"/>
 </classpath>

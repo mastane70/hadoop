@@ -181,7 +181,7 @@ public class Test1Policy extends SchedulingPolicy {
 		   Resource clusterCapacity =
 			          fsContext.getClusterResource();
 		   Resource clusterUsage = 
-				      fsContext.getClusterResource();
+				      fsContext.getClusterUsage();
 		   Resource clusterAvailableResources =
 			        Resources.subtract(clusterCapacity, clusterUsage);
 		   
@@ -419,7 +419,7 @@ public class Test1Policy extends SchedulingPolicy {
 	 			Resource clusterCapacity =
 	 			          fsContext.getClusterResource();
 	 		   Resource clusterUsage = 
-	 				      fsContext.getClusterResource();
+	 				      fsContext.getClusterUsage();
 	 		   Resource clusterAvailableResources =
 	 			        Resources.subtract(clusterCapacity, clusterUsage);
 	 		   
@@ -433,7 +433,7 @@ public class Test1Policy extends SchedulingPolicy {
 	 			Resource clusterCapacity =
 	 			          fsContext.getClusterResource();
 	 		   Resource clusterUsage = 
-	 				      fsContext.getClusterResource();
+	 				      fsContext.getClusterUsage();
 	 		   Resource clusterAvailableResources =
 	 			        Resources.subtract(clusterCapacity, clusterUsage);
 	 		   
